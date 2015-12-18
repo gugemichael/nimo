@@ -100,8 +100,9 @@ config_t* clowf_config_load(const char* cfg)
 			kv_t* kv_pair =	&config->kv_list[config->used];
 
 			/**
-			 * For Key 
+			 * for Key 
 			 */
+
 			// skip blank sapce
 			while(*cur==' ' || *cur=='\t')
 				cur++;
@@ -131,8 +132,9 @@ config_t* clowf_config_load(const char* cfg)
 			}
 
 			/**
-			 * For Value
+			 * for Value
 			 */
+
 			// skip blank space after ": "
 			while(*cur==' '||*cur=='\t')
 				cur++;
@@ -179,7 +181,7 @@ long clowf_config_integer(config_t* cfg, const char* key)
 {
 	const char* v =	clowf_config_string(cfg,key);
 
-#define CARRY (1024L)
+#define UNIT (1024L)
 
 	if (v!=NULL) {
 		int last = strlen(v) - 1;
@@ -187,16 +189,16 @@ long clowf_config_integer(config_t* cfg, const char* key)
 		switch (v[last]) {
 			case 't' :
 			case 'T' :
-				unit *= CARRY;
+				unit *= UNIT;
 			case 'g' :
 			case 'G' :
-				unit *= CARRY;
+				unit *= UNIT;
 			case 'm' :
 			case 'M' :
-				unit *= CARRY;
+				unit *= UNIT;
 			case 'k' :
 			case 'K' :
-				unit *= CARRY;
+				unit *= UNIT;
 				break;
 			default :
 				return atol(v);
@@ -206,9 +208,10 @@ long clowf_config_integer(config_t* cfg, const char* key)
 		return atol(num) * unit;
 	}
 
-#undef CARRY
+#undef UNIT
 
 	// TODO : ***return 0 is not good for bad number***
+	
 	return 0L;
 }
 
