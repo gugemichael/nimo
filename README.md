@@ -1,2 +1,2 @@
-# clowf
+# clowf - CLOWn Fish ! I love the fish ...
 ClownFish - c code library
