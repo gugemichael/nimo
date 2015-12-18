@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "ub.h"
+#include "nimo/log.h"
 
 #define threads (6)
 
@@ -52,7 +52,7 @@ void* write_log(void* c) {
 	unsigned long allocate_times = 2000000000000;
 	while(allocate_times-- != 0) {
 		(*log)++;
-		ublog_debug("This is c test logging , garbage");
+		nimo_log_debug("This is c test logging , garbage");
 		//(*log)+=48;
 		//write(fd,text4k,4096);
 	}
@@ -73,12 +73,12 @@ int main()
 		exit(0);
 	}
 
-	if (NULL == ub_log_split_init("logger",0,0,0)) {
-		printf("UbLog Init Failed [%s]",ub_log_error());
+	if (NULL == nimo_log_split_init("logger",0,0,0)) {
+		printf("UbLog Init Failed [%s]",nimo_log_last_error());
 		exit(0);
 	}
 
-	ub_log_page_buffer();
+	nimo_log_page_buffer();
 
 	pthread_t pid = 0;
 

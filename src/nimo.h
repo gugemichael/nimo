@@ -1,5 +1,5 @@
 /*
- * UB Library Framework For C
+ * Library Framework For C
  *
  * Copyright 2012 , Michael LiuXin <guguemichael@gmail.com>
  *
@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef __CLOWF_H__
-#define __CLOWF_H__
+#ifndef __NIMO_H__
+#define __NIMO_H__
 
 #define MICAHEL "Michael"
 #define MICAHEL_LIUXIN "Michael LiuXin"
@@ -32,18 +32,18 @@ extern "C" {
 #define unlikely(x) __builtin_expect(!!(x),0)
 
 // useless code comment
-#define CLOWF_NON_USE(expr) do {(void)(expr);} while (0)
+#define NIMO_NON_USE(expr) do {(void)(expr);} while (0)
 
-// CLOWF_DEBUG dependency assert
-#ifdef CLOWF_DEBUG
-#define clowf_assert(x) assert(x);
+// NIMO_DEBUG dependency assert
+#ifdef NIMO_DEBUG
+#define nimo_assert(x) assert(x);
 #else
-#define clowf_assert(x) ;
+#define nimo_assert(x) ;
 #endif
 
-#ifndef clowf_ok
-#define clowf_ok (0)
-#define clowf_fail (!(clowf_ok))
+#ifndef nimo_ok
+#define nimo_ok (0)
+#define nimo_fail (!(nimo_ok))
 #endif
 
 
@@ -61,7 +61,7 @@ extern "C" {
  * @Params 		: void
  * @Return  		: void
  */
-#define clowf_daemonize() do { \
+#define nimo_daemonize() do { \
     int fd; \
     if (fork() != 0) \
 		exit(0); /* parent exits */ \
@@ -81,7 +81,7 @@ extern "C" {
  *
  * @return 	: void
  */
-#define clowf_ustime() do{ \
+#define nimo_ustime() do{ \
 	struct timeval time; \
 	gettimeofday(&time, 0x0L);\
 	return time.tv_sec * 1000 + time.tv_usec;\
@@ -91,6 +91,15 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+
+#include "atomic.h"
+#include "log.h"
+#include "list.h"
+#include "queue.h"
+#include "arena.h"
+#include "hash.h"
+
 
 #endif
 

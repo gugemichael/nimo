@@ -1,2 +1,4 @@
-# clown fish - The tropical fish named Nimo is my best love ! 
+# Nimo 
+# The Tropical Fish named Nimo is my best love ! 
+
 ClownFish - c code library

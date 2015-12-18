@@ -95,7 +95,7 @@ static __inline__ int atomic_add_return(atomic_t *v, int i)
 
 static __inline__ int atomic_sub_return(atomic_t *v, int i)
 {
-  return atomic_add_return(-i,v);
+  return atomic_add_return(v, -i);
 }
 
 

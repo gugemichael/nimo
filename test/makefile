@@ -10,4 +10,4 @@ all :
 	${CC} ${FLAGS} -I${INCLUDE} -L${INCLUDE_LIB} ${LIBS} test.c -o test
 
 clean :
-	${RM} ${TEST_EXEC_PREFIX}* *.core gmon.out logs
+	${RM} *.core gmon.out logs

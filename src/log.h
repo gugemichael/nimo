@@ -1,24 +1,24 @@
 /*
- * UB Library Framework For C
+ * Library Framework For C
  *
  * Copyright 2012 , Michael LiuXin <guguemichael@gmail.com>
  *
  * Contributors can discuss or commit code at
  *
  *  http://blog.csdn.net/gugemichael (Blog)
- *  https://github.com/gugemichel/libclowf (Git)
+ *  https://github.com/gugemichel/libnimo (Git)
  *
  * Version : 1.0
  * Created : 09/19/2012 09:25:52 PM
- * Filename : clowf_log.h
+ * Filename : nimo_log.h
  * Description : log with split files
  * Compiler : g++ 4.6.1
  * Author : Michael LiuXin
  *
  */
 
-#ifndef __CLOWF_LOG_H__
-#define __CLOWF_LOG_H__
+#ifndef __NIMO_LOG_H__
+#define __NIMO_LOG_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -98,7 +98,7 @@ typedef struct __log_t {
  *
  * @return : pointer to the log_t structure . if failed , it's NULL
  */
-log_t* clowf_log_init(const char* filepath, int direct_io);
+log_t* nimo_log_init(const char* filepath, int direct_io);
 
 /**
  * Initial log handler with path , direct io , and split strategy 
@@ -110,12 +110,12 @@ log_t* clowf_log_init(const char* filepath, int direct_io);
  *
  * @return : pointer to the log_t structure . if failed , it's NULL
  */
-log_t* clowf_log_split_init(const char* filepath, int direct_io,unsigned long long ts, size_t ss);
+log_t* nimo_log_split_init(const char* filepath, int direct_io,unsigned long long ts, size_t ss);
 
 /**
  * Destroy log handle 
  */
-void clowf_log_destroy();
+void nimo_log_destroy();
 
 /**
  * Do actual write disk (may be cached) . DON'T call it directly 
@@ -137,11 +137,11 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
  *
  * return : 0 if buffer allocate successfully
  */
-int clowf_log_page_buffer();
+int nimo_log_page_buffer();
 
-int clowf_log_buffer(int size);
+int nimo_log_buffer(int size);
 
-void clowf_log_level(log_level);
+void nimo_log_level(log_level);
 
 /**
  * @brief :  write log with LEVEL 
@@ -149,50 +149,50 @@ void clowf_log_level(log_level);
  * @params : [in] log : log handle 
  * @params : [in] buf : buffer to be written 
  */
-#ifndef NON_USE_CLOWF_LOG
-#define clowf_log_debug(buf,...) do{\
+#ifndef NON_USE_NIMO_LOG
+#define nimo_log_debug(buf,...) do{\
 log_write(DEBUG,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
-#define clowf_log_debug(buf,...) do{}while(0)
+#define nimo_log_debug(buf,...) do{}while(0)
 #endif
-#define LogDebug clowf_log_debug
+#define LogDebug nimo_log_debug
 
-#ifndef NON_USE_CLOWF_LOG
-#define clowf_log_info(buf,...) do{\
+#ifndef NON_USE_NIMO_LOG
+#define nimo_log_info(buf,...) do{\
 log_write(TRACE,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
-#define clowf_log_info(buf,...) do{}while(0)
+#define nimo_log_info(buf,...) do{}while(0)
 #endif
-#define LogInfo clowf_log_info
+#define LogInfo nimo_log_info
 
-#ifndef NON_USE_CLOWF_LOG
-#define clowf_log_warnNING(buf,...) do{\
+#ifndef NON_USE_NIMO_LOG
+#define nimo_log_warnNING(buf,...) do{\
 log_write(WARNNING,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
-#define clowf_log_warnNING(buf,...) do{}while(0)
+#define nimo_log_warnNING(buf,...) do{}while(0)
 #endif
-#define LogWarn clowf_log_warnNING
+#define LogWarn nimo_log_warnNING
 
-#ifndef NON_USE_CLOWF_LOG
-#define clowf_log_error(buf,...) do{\
+#ifndef NON_USE_NIMO_LOG
+#define nimo_log_error(buf,...) do{\
 log_write(ERROR,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
-#define clowf_log_error(buf,...) do{}while(0)
+#define nimo_log_error(buf,...) do{}while(0)
 #endif
-#define LogError clowf_log_error
+#define LogError nimo_log_error
 
-void clowf_log_flush();
+void nimo_log_flush();
 
 /**
  * @brief  : get last function called error 
  *
  * @return : error message
  */
-const char* clowf_log_last_error();
+const char* nimo_log_last_error();
 
 #ifdef __cplusplus
 }

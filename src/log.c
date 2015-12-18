@@ -31,13 +31,13 @@ const char* LOG_LEVEL[] = {
 static int __write_file(int type,void* buf,size_t size);
 
 const char *
-clowf_log_last_error()
+nimo_log_last_error()
 {
 	return g_last_error;
 }
 
 log_t * 
-clowf_log_init(const char* filepath, int direct_io)
+nimo_log_init(const char* filepath, int direct_io)
 {
 	if (my_log)
 		return my_log;
@@ -52,7 +52,7 @@ clowf_log_init(const char* filepath, int direct_io)
 	log_t* feedback = my_log;
 	
 	if (NULL == feedback) {
-		fprintf(stderr,"malloc clowf log resource failed!\n");
+		fprintf(stderr,"malloc nimo log resource failed!\n");
 		return NULL;
 	}
 	
@@ -94,19 +94,19 @@ clowf_log_init(const char* filepath, int direct_io)
 	
 exception : 
 	g_last_error = strerror(errno);
-	fprintf(stderr, "initial clowf log failed : %s", g_last_error);
+	fprintf(stderr, "initial nimo log failed : %s", g_last_error);
 	free(feedback);
 	my_log = NULL;
 	return NULL;
 }
 
 log_t *
-clowf_log_split_init(const char* filepath,int direct_io, unsigned long long ts, size_t ss)
+nimo_log_split_init(const char* filepath,int direct_io, unsigned long long ts, size_t ss)
 {
 	if (my_log)
 		return my_log;
 	
-	my_log= clowf_log_init(filepath,direct_io);
+	my_log= nimo_log_init(filepath,direct_io);
 	
 	if (NULL == my_log)
 		return NULL;
@@ -126,7 +126,7 @@ clowf_log_split_init(const char* filepath,int direct_io, unsigned long long ts, 
 }
 
 void 
-clowf_log_destroy()
+nimo_log_destroy()
 {
 	if (!my_log) {
 		// release lock resource
@@ -270,7 +270,7 @@ new_thread_local_buffer(int thread_specific)
 	return my_log->dirty_page[thread_specific];
 }
 
-// non-static , public with Macro CLOWF_LOG_DEBUG
+// non-static , public with Macro NIMO_LOG_DEBUG
 void 
 log_write(log_level level, const char* file, const char* func_name,unsigned int line, const char* __format, ...)
 {
@@ -343,7 +343,7 @@ log_write(log_level level, const char* file, const char* func_name,unsigned int 
 				memcpy(flush_page->mem,output,len);
 				flush_page->cursor = len;
 			} else
-				fprintf(stderr,"[UBLOG] Flush clowflog write failed , log message ignore : %s\n",g_last_error=strerror(errno)); // flush failed
+				fprintf(stderr,"[UBLOG] Flush nimolog write failed , log message ignore : %s\n",g_last_error=strerror(errno)); // flush failed
 		} else if (cursor!=0 && time_ms.tv_sec>my_log->touch_time) {
 			__write_file(type,flush_page->mem,cursor);
 		} else {
@@ -367,13 +367,13 @@ log_write(log_level level, const char* file, const char* func_name,unsigned int 
 // __log4c_use_buffer__
 //
 int
-clowf_log_page_buffer()
+nimo_log_page_buffer()
 {
-	return clowf_log_buffer(VFS_PAGE_SIZE);
+	return nimo_log_buffer(VFS_PAGE_SIZE);
 }
 
 int 
-clowf_log_buffer(int size) 
+nimo_log_buffer(int size) 
 {
 	if (!my_log)
 		return -1;
@@ -386,7 +386,7 @@ clowf_log_buffer(int size)
 }
 
 void
-clowf_log_flush()
+nimo_log_flush()
 {
 	if (my_log) {
 		// only sync the file content and size metadata
@@ -396,7 +396,7 @@ clowf_log_flush()
 }
 
 void
-clowf_log_level(log_level level)
+nimo_log_level(log_level level)
 {
 	if (my_log)
 		my_log->level = level;

@@ -2,6 +2,8 @@
 # Generic Makefile
 # ==============================================================
 
+LIB_NAME = nimo
+
 # compile relative
 CC = gcc 
 PROFILER = #-lprofiler
@@ -11,14 +13,14 @@ INCLUDE =
 LIBS = 
 LIBS_PATH = 
 ENV = ENV
-TARGET = libclowf.a
+TARGET = lib${LIB_NAME}.a
 TARGET_PATH = ./output/
 
 # output relative
 #TARGET_INCLUDE = $(TARGET_PATH)/include/
 #TARGET_LIB = $(TARGET_PATH)/lib/
-TARGET_INCLUDE = $(TARGET_PATH)/
-TARGET_LIB = $(TARGET_PATH)/
+TARGET_INCLUDE = $(TARGET_PATH)/${LIB_NAME}
+TARGET_LIB = $(TARGET_PATH)/${LIB_NAME}
 
 # scaned files
 SRC = ./src/
