@@ -66,19 +66,19 @@ void sleep_test() {
 int main()
 {
 
-	fd = open("bigfile.log",O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+//	fd = open("bigfile.log",O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+//
+//	if (-1 == fd) {
+//		printf("file create failed! %s\n",strerror(errno));
+//		exit(0);
+//	}
 
-	if (-1 == fd) {
-		printf("file create failed! %s\n",strerror(errno));
-		exit(0);
-	}
-
-	if (NULL == nimo_log_split_init("logger",0,0,0)) {
+	if (NULL == nimo_log_split_init("test.logfile",0,0,0)) {
 		printf("UbLog Init Failed [%s]",nimo_log_last_error());
 		exit(0);
 	}
 
-	nimo_log_page_buffer();
+	nimo_log_buffer(4096);
 
 	pthread_t pid = 0;
 

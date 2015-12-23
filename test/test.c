@@ -7,7 +7,12 @@
 #include <time.h>
 #include <signal.h>
 
-__errordecl(__compile_error, "compile abort!");
+#ifdef __linux__
+	__errordecl(__compile_error, "compile abort!");
+#else
+	#define __compile_error() 
+#endif
+
 
 void* callback(void* v)
 {

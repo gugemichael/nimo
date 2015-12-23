@@ -56,10 +56,8 @@ extern "C" {
 #endif 
 
 
-/**
- * @Description : make daemon process
- * @Params 		: void
- * @Return  		: void
+/* make process daemonized with fork()
+ * 
  */
 #define nimo_daemonize() do { \
     int fd; \
@@ -74,12 +72,8 @@ extern "C" {
     } \
 }while(0); \
 
-/**
- * @brief 	: get current milliseconds
+/* get current milliseconds
  *
- * @params 	: void
- *
- * @return 	: void
  */
 #define nimo_ustime() do{ \
 	struct timeval time; \

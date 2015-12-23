@@ -74,7 +74,6 @@ typedef struct __log_t {
 	//unsigned int level; 	/* level of log to record : ERROR , WARNNING , DEBUG , ALL */
 	char file_name[FILE_NAME_MAX];
 	unsigned int mask;
-	int direct_io;
 	int normal_file; 				/* output log file */
 	int error_file; 				/* output wf file */
 	int use_pagecache;
@@ -93,62 +92,64 @@ typedef struct __log_t {
 /**
  * Initial log handler with path , indicate use direct io or not
  * 
- * @params  [in] which file to be written . if NULL "stdout" will be set
- * @params  [in] file mask set			
+ * @params filepath, which file to be written . if NULL "stdout" will be set
  *
  * @return : pointer to the log_t structure . if failed , it's NULL
  */
-log_t* nimo_log_init(const char* filepath, int direct_io);
+log_t* nimo_log_init(const char* filepath);
 
 /**
  * Initial log handler with path , direct io , and split strategy 
  * 
- * @params [in] which file to be written . if NULL "stdout" will be set
- * @params [in] file mask set			
- * @params [in] span time of split file , 0 means no split 
- * @params [in] content size of split file , 0 means no split 
+ * @params filepath, which file to be written . if NULL "stdout" will be set
+ * @params ts, span time of split file , 0 means no split 
+ * @params ss, content size of split file , 0 means no split 
  *
  * @return : pointer to the log_t structure . if failed , it's NULL
  */
-log_t* nimo_log_split_init(const char* filepath, int direct_io,unsigned long long ts, size_t ss);
+log_t* nimo_log_split_init(const char* filepath, unsigned long long ts, size_t ss);
 
-/**
- * Destroy log handle 
- */
-void nimo_log_destroy();
-
-/**
- * Do actual write disk (may be cached) . DON'T call it directly 
+/* Destroy log handle 
  * 
- * @params [in] specified level to be write
- * @params [in] file name from __FILE__
- * @params [in] function name from __FUNCTION__
- * @params [in] line number from __LINE__
- * @params [in][varlist] variable strings
+ * */
+void nimo_log_destroy(log_t*);
+
+
+/* Do actual write disk (may be cached) . DON'T call it directly 
+ * 
+ * @params level, specified level to be write
+ * @params file, file name from __FILE__
+ * @params func_name, function name from __FUNCTION__
+ * @params line, line number from __LINE__
+ * @params varlist..., variable strings
  *
- */
+ * */
 void log_write(log_level level, const char* file, const char* func_name,unsigned int line, const char* __format,...);
 
-/**
- * Reduce write() call times , if possible save into buffer
+/* Reduce write() call times , if possible save into buffer
  * first . When buffer is full , will cause write()
  * 
- * @params [in] specified buffer size 
+ * @params log, log handle
+ * @params size, specified buffer size 
  *
  * return : 0 if buffer allocate successfully
- */
-int nimo_log_page_buffer();
-
-int nimo_log_buffer(int size);
-
-void nimo_log_level(log_level);
-
-/**
- * @brief :  write log with LEVEL 
  *
- * @params : [in] log : log handle 
- * @params : [in] buf : buffer to be written 
- */
+ * */
+int nimo_log_buffer(log_t* log, int size);
+
+/* log level macro, recorded log will be losed and ignored that
+ * below than the log level setted
+ *
+ * @params log, log handle 
+ * @params buf, buffer to be written 
+ *
+ * */
+void nimo_log_level(log_t* log, log_level);
+
+
+/* NON_USE_NIMO_LOG will remove all the log statement
+ * 
+ * */
 #ifndef NON_USE_NIMO_LOG
 #define nimo_log_debug(buf,...) do{\
 log_write(DEBUG,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
@@ -168,11 +169,11 @@ log_write(TRACE,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 #define LogInfo nimo_log_info
 
 #ifndef NON_USE_NIMO_LOG
-#define nimo_log_warnNING(buf,...) do{\
+#define nimo_log_warn(buf,...) do{\
 log_write(WARNNING,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
-#define nimo_log_warnNING(buf,...) do{}while(0)
+#define nimo_log_warn(buf,...) do{}while(0)
 #endif
 #define LogWarn nimo_log_warnNING
 
@@ -185,14 +186,19 @@ log_write(ERROR,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 #endif
 #define LogError nimo_log_error
 
-void nimo_log_flush();
+/* flush all the buffered content in memory or in os cache
+ * 
+ * @params log : log handle 
+ *
+ * */
+void nimo_log_flush(log_t* log);
 
-/**
- * @brief  : get last function called error 
+/* get the lastet error message 
  *
  * @return : error message
- */
-const char* nimo_log_last_error();
+ *
+ * */
+const char* nimo_log_last_error(log_t* log);
 
 #ifdef __cplusplus
 }

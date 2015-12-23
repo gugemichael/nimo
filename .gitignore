@@ -73,3 +73,5 @@ CMakeFiles
 
 .idea
 
+test/test-*
+test/test
