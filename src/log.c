@@ -5,13 +5,12 @@
 //#define DEFAULT_DIR_MODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH|S_IXUSR|S_IXGRP|S_IXOTH)
 #define DEFAULT_DIR_MODE (S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH)
 
-#define OUTPUT_STRING_MAX 1024
+#define OUTPUT_STRING_MAX 4096
 #define SPLIT_MIN_SIZE (64 * 1024 * 1024)
 
 // page size 4k 
 //#define LOG_BUFFER_PAGE (1024 * 4)
 #define VFS_PAGE_SIZE (getpagesize())
-size_t kLogBufferPage = 0; 
 
 // log folder
 #define LOG_PATH "./logs/"
@@ -23,28 +22,12 @@ size_t kLogBufferPage = 0;
 
 #include "os.h"
 
-const char* g_last_error = NULL;
 struct __log_t* my_log = NULL;
 
 const char* LOG_LEVEL[] = {
 	"DEBUG","TRACE","WARN","ERROR","UNKOWN"
 };
 
-
-/*
- * write data into file
- */
-static int 
-__write_file(int type, void* buffer, size_t size) {
-	int written = write(IS_NORMAL_LOG(type) ? my_log->normal_file : my_log->error_file, buffer, size);
-	if (-1 != written) {
-		size_t *file_size = IS_NORMAL_LOG(type) ? &my_log->normal_file_size
-						: &my_log->error_file_size;
-		*file_size += written;
-		return written;
-	} else
-		return -1;
-}
 
 static void 
 __get_sign(time_t raw, char* buffer, size_t len) {
@@ -53,16 +36,31 @@ __get_sign(time_t raw, char* buffer, size_t len) {
 	strftime(buffer,len,"%Y-%m-%d.%H",t);
 }
 
+/*
+ * write data into file
+ */
 static int 
-__reopen(int type, time_t raw) {
-	int fd = (IS_NORMAL_LOG(type) ? my_log->normal_file : my_log->error_file);
+__write_file(log_t *log, int type, void* buffer, size_t size) {
+	int written = write(IS_NORMAL_LOG(type) ? log->normal_file : log->error_file, buffer, size);
+	if (-1 != written) {
+		size_t *file_size = IS_NORMAL_LOG(type) ? &log->normal_file_size
+						: &log->error_file_size;
+		*file_size += written;
+	}
+	return written;
+}
+
+
+static int 
+__reopen(log_t *log, int type, time_t raw) {
+	int fd = (IS_NORMAL_LOG(type) ? log->normal_file : log->error_file);
 	
 	char buf[16] = {0};
 	char file_rename[FILE_NAME_MAX] = {0};
 	__get_sign(raw,buf,sizeof(buf));
-	snprintf(file_rename,FILE_NAME_MAX,IS_NORMAL_LOG(type)?(LOG_PATH"%s.log.%s.%lu"):(LOG_PATH"%s.log.wf.%s.%lu"),my_log->file_name,buf,raw); 
+	snprintf(file_rename,FILE_NAME_MAX,IS_NORMAL_LOG(type)?(LOG_PATH"%s.log.%s.%lu"):(LOG_PATH"%s.log.wf.%s.%lu"),log->file_name,buf,raw); 
 
-	int newfd = open(file_rename,my_log->mask,DEFAULT_FILE_MODE);
+	int newfd = open(file_rename,log->mask,DEFAULT_FILE_MODE);
 	
 	// if open failed , skip
 	if (-1 == newfd) {
@@ -71,11 +69,11 @@ __reopen(int type, time_t raw) {
 	}
 	
 	if (IS_NORMAL_LOG(type)) {
-		my_log->normal_file_size = 0;
-		my_log->normal_file = newfd;
+		log->normal_file_size = 0;
+		log->normal_file = newfd;
 	} else {
-		my_log->error_file_size = 0;
-		my_log->error_file = newfd;
+		log->error_file_size = 0;
+		log->error_file = newfd;
 	}
 	
 	if (close(fd) == -1)
@@ -89,70 +87,71 @@ __reopen(int type, time_t raw) {
  * fast check that we need to rotate file
  */ 
 static void 
-__check_file_stat(time_t raw) {
-	if (my_log->split_size && my_log->normal_file_size>my_log->split_size) {
+__check_file_stat(log_t *log, time_t raw) {
+	if (log->split_size && log->normal_file_size>log->split_size) {
 		// too big , or time up
-		pthread_mutex_lock(&my_log->split_lock);
+		pthread_mutex_lock(&log->split_lock);
 		// double check is for locking optimize
-		if (my_log->normal_file_size<my_log->split_size) { 
-			pthread_mutex_unlock(&my_log->split_lock);
+		if (log->normal_file_size<log->split_size) { 
+			pthread_mutex_unlock(&log->split_lock);
 			return;
 		}
-		__reopen(NORMAL_LOG,raw);
-		pthread_mutex_unlock(&my_log->split_lock);
+		__reopen(log, NORMAL_LOG,raw);
+		pthread_mutex_unlock(&log->split_lock);
 		return;
 	}
-	if (my_log->split_size && my_log->error_file_size>my_log->split_size) {
+	if (log->split_size && log->error_file_size>log->split_size) {
 		// too big , or time up
-		pthread_mutex_lock(&my_log->split_lock);
+		pthread_mutex_lock(&log->split_lock);
 		// double check is for locking optimize
-		if (my_log->error_file_size<my_log->split_size) { 
-			pthread_mutex_unlock(&my_log->split_lock);
+		if (log->error_file_size<log->split_size) { 
+			pthread_mutex_unlock(&log->split_lock);
 			return;
 		}
-		__reopen(ERROR_LOG,raw);
-		pthread_mutex_unlock(&my_log->split_lock);
+		__reopen(log, ERROR_LOG,raw);
+		pthread_mutex_unlock(&log->split_lock);
 		return;
 	}
 	
 	// if split_size has effected , we ignore the split_time
-	if (my_log->split_time) {
-		if (raw-my_log->touch_time>my_log->split_time) {
-			pthread_mutex_lock(&my_log->split_lock);
+	if (log->split_time) {
+		if (raw-log->touch_time>log->split_time) {
+			pthread_mutex_lock(&log->split_lock);
 			// double check is for locking optimize
-			if (raw-my_log->touch_time<my_log->split_time) { 
-				pthread_mutex_unlock(&my_log->split_lock);
+			if (raw-log->touch_time<log->split_time) { 
+				pthread_mutex_unlock(&log->split_lock);
 				return;
 			}
 			// for .log
-			my_log->normal_file = __reopen(NORMAL_LOG,raw);
+			log->normal_file = __reopen(log, NORMAL_LOG,raw);
 			// for .log.wf
-			my_log->error_file = __reopen(ERROR_LOG,raw);
+			log->error_file = __reopen(log, ERROR_LOG,raw);
 			
 			// reset
-			my_log->touch_time = raw;
-			pthread_mutex_unlock(&my_log->split_lock);
+			log->touch_time = raw;
+			pthread_mutex_unlock(&log->split_lock);
 		}
 	}
 }
 
 static buffer_t* 
-__alloc_threadlocal_buf(int thread_specific) {
-	my_log->dirty_page[thread_specific] = calloc(1,sizeof(buffer_t));
-	if (my_log->dirty_page[thread_specific] == NULL)
+__alloc_threadlocal_buf(log_t *log, int thread_specific) {
+	assert(log != NULL);
+	log->dirty_page[thread_specific] = calloc(1,sizeof(buffer_t) + log->logBufferPageCap);
+	if (log->dirty_page[thread_specific] == NULL)
 		return NULL;
-	// calloc wouldn't be necessary
-	my_log->dirty_page[thread_specific]->mem = malloc(kLogBufferPage);
-	if (my_log->dirty_page[thread_specific]->mem == NULL)
-		return NULL;
-	my_log->dirty_page[thread_specific]->size = kLogBufferPage;
+
+	log->dirty_page[thread_specific]->size = log->logBufferPageCap;
+	log->dirty_page[thread_specific]->cursor = 0;
 	
-	return my_log->dirty_page[thread_specific];
+	return log->dirty_page[thread_specific];
 }
 
 
-const char *nimo_log_last_error() {
-	return g_last_error;
+const char *nimo_log_last_error(log_t *log) {
+	if (log != NULL)
+		return log->last_error;
+	return "";
 }
 
 
@@ -160,8 +159,6 @@ log_t* nimo_log_init(const char* filepath) {
 	if (my_log)
 		return my_log;
 
-	kLogBufferPage = VFS_PAGE_SIZE;
-	
 	static const char* normal = LOG_PATH"%s.log";
 	static const char* err = LOG_PATH"%s.log.wf";
 	
@@ -204,8 +201,7 @@ log_t* nimo_log_init(const char* filepath) {
 	return feedback;
 	
 exception : 
-	g_last_error = strerror(errno);
-	fprintf(stderr, "initial nimo log failed : %s", g_last_error);
+	fprintf(stderr, "initial nimo log failed : %s", strerror(errno));
 	free(feedback);
 	my_log = NULL;
 	return NULL;
@@ -242,7 +238,7 @@ void nimo_log_destroy(log_t* log) {
 		if (log->use_pagecache) {
 			for (int i=MAX_THREADS;i!=0;i--)
 				if (log->dirty_page[i])
-					__write_file(NORMAL_LOG,log->dirty_page[i]->mem,
+					__write_file(log, NORMAL_LOG,log->dirty_page[i]->mem,
 							log->dirty_page[i]->cursor);
 		}
 		close(log->normal_file);
@@ -276,12 +272,12 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 	
 	// stdout ignore
 	if ((my_log->normal_file!=1) && (my_log->split_size!=0 || my_log->split_time!=0))
-		__check_file_stat(time_ms.tv_sec);
+		__check_file_stat(my_log, time_ms.tv_sec);
 	
 	int fd = level <= TRACE && level >= DEBUG ? my_log->normal_file : my_log->error_file;
 	int type = (fd == my_log->normal_file) ? NORMAL_LOG : ERROR_LOG;
 	
-	char tmp[OUTPUT_STRING_MAX*2] = {0};
+	char tmp[OUTPUT_STRING_MAX + 1] = {0};
 	char *output = NULL;
 	output = tmp;
 	
@@ -298,15 +294,15 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 	// keep appending
 	valist_len = vsnprintf(output + output_len,OUTPUT_STRING_MAX - output_len, __format, __local_argv);
 	// append a "\n" at the end
-	output[output_len+valist_len] = '\n';
-	size_t len = output_len+valist_len+1;
+	output[output_len + valist_len] = '\n';
+	size_t len = output_len + valist_len + 1;
 	
 	/* we would use buffer on NORMAL file only */
 	if (IS_NORMAL_LOG(type) && my_log->use_pagecache) {
 		// acquire thread's log buffer
 		buffer_t *flush_page = my_log->dirty_page[thread_specific];
 		if (unlikely(flush_page==NULL)) {
-			flush_page = __alloc_threadlocal_buf(thread_specific);
+			flush_page = __alloc_threadlocal_buf(my_log, thread_specific);
 			if (flush_page == NULL)
 				return;
 		}
@@ -319,14 +315,15 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 			 * 3. release lock
 			 * 4. do slowly write
 			 */
-			if (-1 != __write_file(type,flush_page->mem,cursor)) {
+fprintf(stderr, "--%ld", cursor);
+			if (-1 != __write_file(my_log, type,flush_page->mem,cursor)) {
 				// flush buffer ok and reset cursor without clear memory
 				memcpy(flush_page->mem,output,len);
 				flush_page->cursor = len;
 			} else
-				fprintf(stderr,"[UBLOG] Flush nimolog write failed , log message ignore : %s\n",g_last_error=strerror(errno)); // flush failed
+				fprintf(stderr,"nimo flush log write failed , log message ignore : %s\n",my_log->last_error = strerror(errno)); // flush failed
 		} else if (cursor!=0 && time_ms.tv_sec>my_log->touch_time) {
-			__write_file(type,flush_page->mem,cursor);
+			__write_file(my_log, type,flush_page->mem,cursor);
 		} else {
 			/**
 			 * only copy string in memory
@@ -335,7 +332,7 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 			flush_page->cursor += len;
 		}
 	} else
-		__write_file(type,output,len);
+		__write_file(my_log, type,output,len);
 	
 	// update log time
 	my_log->touch_time = time_ms.tv_sec;
@@ -348,7 +345,7 @@ int nimo_log_buffer(log_t* log, int size) {
 	if (!log)
 		return -1;
 
-	kLogBufferPage = size;
+	log->logBufferPageCap = size;
 	log->use_pagecache = 1;
 	
 	return 0;

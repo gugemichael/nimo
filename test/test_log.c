@@ -73,12 +73,13 @@ int main()
 //		exit(0);
 //	}
 
-	if (NULL == nimo_log_split_init("test.logfile",0,0,0)) {
-		printf("UbLog Init Failed [%s]",nimo_log_last_error());
+	log_t *logger;
+
+	if (NULL == (logger = nimo_log_split_init("test.logfile",0,0))) {
 		exit(0);
 	}
 
-	nimo_log_buffer(4096);
+	nimo_log_buffer(logger, 4096);
 
 	pthread_t pid = 0;
 

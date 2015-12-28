@@ -7,7 +7,7 @@ LIBS = -L${INCLUDE_LIB} -lnimo -lpthread ${PROFILER}
 RM = rm -rf 
 
 all : 
-	${CC} ${FLAGS} -I${INCLUDE} -L${INCLUDE_LIB} ${LIBS} test.c -o test
+	${CC} test.c ${FLAGS} -I${INCLUDE} -L${INCLUDE_LIB} ${LIBS} -o test
 
 clean :
 	${RM} *.core gmon.out logs

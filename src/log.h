@@ -64,15 +64,16 @@ typedef enum __log_level {
 
 
 typedef struct __buffer_t {
-	unsigned char* mem;
 	size_t size;
 	size_t cursor;
-}buffer_t;	
+	unsigned char mem[];
+} buffer_t;
 
 
 typedef struct __log_t {
-	//unsigned int level; 	/* level of log to record : ERROR , WARNNING , DEBUG , ALL */
+	log_level level; 			/* Log level , lower level string will ignore */
 	char file_name[FILE_NAME_MAX];
+	char* last_error;
 	unsigned int mask;
 	int normal_file; 				/* output log file */
 	int error_file; 				/* output wf file */
@@ -80,14 +81,13 @@ typedef struct __log_t {
 	size_t normal_file_size; 		/* file size record */
 	size_t error_file_size; 		/* file size record */
 	size_t split_size; 				/* one piece(file) max size with split */
-	time_t touch_time; 	/* total time */
+	size_t logBufferPageCap; 		/* buffer capacity */
 	time_t split_time;  /* one piece(file) time with split */
+	time_t touch_time; 	/* total time */
 	struct tm *timep;
-	const char* last_error;
 	buffer_t *dirty_page[MAX_THREADS];
-	log_level level; 			/* Log level , lower level string will ignore */
 	pthread_mutex_t split_lock;
-}log_t;
+} log_t;
 
 /**
  * Initial log handler with path , indicate use direct io or not
