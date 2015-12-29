@@ -28,6 +28,10 @@ SOURCES = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
 OBJFILES = $(SOURCES:%.c=%.o)
 
+# ctags files
+TAGS = ./tags
+CSCP = ./cscope.*
+
 # command macro definition
 MKDIR = mkdir -p 
 RM = rm -rf 
@@ -40,6 +44,8 @@ COMPILER = $(CC) $(INCLUDE) $(LIBS_PATH) $(LIBS)
 ####################################################
 
 all: $(TARGET)
+	ctags -R --fields=+iaS --extra=+q
+	cscope -bkqR
 
 $(TARGET): $(ENV) $(OBJFILES)
 	$(AR) $(TARGET_PATH)/$(TARGET) ${SRC}/*.o
@@ -54,5 +60,5 @@ $(ENV):
 	$(MKDIR) $(TARGET_LIB)
 
 clean:
-	$(RM) $(OBJFILES) $(TARGET_PATH) 
+	$(RM) $(OBJFILES) $(TARGET_PATH) ${TAGS} ${CSCP}
 

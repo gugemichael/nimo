@@ -15,23 +15,17 @@
  *
  * =====================================================================================
  */
-#include "ub.h"
+#include "nimo/conf.h"
 
 int main(int argc, char *argv[])
 {
 
 //	for (int i=0;i!=100;i++) {
-		config_t* config = ub_config_load_from_file("./test.conf");
+		config_t* config = nimo_config_load_from_file("./test.conf");
 
-		ub_config_print(config);
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num1"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num2"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num3"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num4"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num5"));
-		fprintf(stderr,"number convert : %ld\n",ub_config_integer(config,"num6"));
-		ub_config_release(config);
+		nimo_config_print(config);
+		fprintf(stderr,"key pidfile : %s\n",nimo_config_string(config,"pidfile"));
+		nimo_config_release(config);
 //	}
 
 }

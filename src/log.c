@@ -134,11 +134,11 @@ __check_file_stat(log_t *log, time_t raw) {
 static buffer_t* 
 __alloc_threadlocal_buf(log_t *log, int thread_specific) {
 	assert(log != NULL);
-	log->dirty_page[thread_specific] = calloc(1,sizeof(buffer_t) + log->logBufferPageCap);
+	log->dirty_page[thread_specific] = calloc(1,sizeof(buffer_t) + log->buffer_page_cap);
 	if (log->dirty_page[thread_specific] == NULL)
 		return NULL;
 
-	log->dirty_page[thread_specific]->size = log->logBufferPageCap;
+	log->dirty_page[thread_specific]->size = log->buffer_page_cap;
 	log->dirty_page[thread_specific]->cursor = 0L;
 	
 	return log->dirty_page[thread_specific];
@@ -342,7 +342,7 @@ int nimo_log_buffer(log_t* log, int size) {
 		return -1;
 
 #ifdef  __linux__
-	log->logBufferPageCap = size;
+	log->buffer_page_cap = size;
 	log->use_pagecache = 1;
 #endif     
 	

@@ -1,5 +1,5 @@
-#ifndef __CLOWF_ATOMIC_H__
-#define __CLOWF_ATOMIC_H__
+#ifndef __NIMO_ATOMIC_H__
+#define __NIMO_ATOMIC_H__
 
 #ifdef __cplusplus
 extern "C" {

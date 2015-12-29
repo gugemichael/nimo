@@ -81,7 +81,7 @@ typedef struct __log_t {
 	size_t normal_file_size; 		/* file size record */
 	size_t error_file_size; 		/* file size record */
 	size_t split_size; 				/* one piece(file) max size with split */
-	size_t logBufferPageCap; 		/* buffer capacity */
+	size_t buffer_page_cap; 		/* buffer capacity */
 	time_t split_time;  /* one piece(file) time with split */
 	time_t touch_time; 	/* total time */
 	struct tm *timep;

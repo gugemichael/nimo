@@ -16,8 +16,8 @@
  * Author : Michael LiuXin
  *
  */
-#ifndef __CLOWF_SLAB_H__
-#define __CLOWF_SLAB_H__
+#ifndef __NIMO_SLAB_H__
+#define __NIMO_SLAB_H__
 
 #include <stdlib.h>
 

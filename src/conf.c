@@ -15,12 +15,11 @@
 #include "conf.h" 
 
 #define CONFIG_INIT_LEN (64)
-#define CONFIG_MAX_LEN (1024*1024)
 
 //
-// clowf_config_load_from_file
+// nimo_config_load_from_file
 //
-config_t* clowf_config_load_from_file(const char* fpath)
+config_t* nimo_config_load_from_file(const char* fpath)
 {
 	if (NULL == fpath)
 		return NULL;
@@ -45,7 +44,7 @@ config_t* clowf_config_load_from_file(const char* fpath)
 		}
 	}
 
-	config_t* back = clowf_config_load(buf);
+	config_t* back = nimo_config_load(buf);
 
 	free(buf);
 	fclose(conf);
@@ -53,9 +52,9 @@ config_t* clowf_config_load_from_file(const char* fpath)
 }
 
 //
-// clowf_config_load
+// nimo_config_load
 //
-config_t* clowf_config_load(const char* cfg)
+config_t* nimo_config_load(const char* cfg)
 {
 	if (NULL == cfg)
 		return NULL;
@@ -73,7 +72,7 @@ config_t* clowf_config_load(const char* cfg)
 	if (NULL == config->kv_list)
 		goto cleanup;
 
-	config->count = CONFIG_INIT_LEN;
+	config->cap = CONFIG_INIT_LEN;
 
 	const char* line = cfg;
 	const char* cur = cfg;
@@ -87,17 +86,17 @@ config_t* clowf_config_load(const char* cfg)
 		} else {
 
 			// first check the cacpacity
-			if (config->used >= config->count) {
+			if (config->count >= config->cap) {
 				// extends space 
-				config->kv_list = (kv_t*)realloc(config->kv_list,sizeof(kv_t)*config->count*2);
+				config->kv_list = (kv_t*)realloc(config->kv_list, sizeof(kv_t) * config->cap * 2);
 				if (NULL == config->kv_list)
 					goto cleanup;
 				else {
-					config->count *= 2;
+					config->cap *= 2;
 				}
 			}
 
-			kv_t* kv_pair =	&config->kv_list[config->used];
+			kv_t* kv_pair =	&config->kv_list[config->count];
 
 			/**
 			 * for Key 
@@ -151,11 +150,12 @@ config_t* clowf_config_load(const char* cfg)
 					value++;
 			}
 			char* tmp_value = (char*)calloc(1,value-cur+2);
+
 			// don't copy "\n"
 			memcpy(tmp_value,cur,value-cur+1);
 
 			// kv ok
-			config->used++;
+			config->count++;
 			kv_pair->k = tmp_key;
 			kv_pair->v = tmp_value;
 
@@ -175,11 +175,11 @@ check_exception :
 }
 
 //
-// clowf_config_get_integer
+// nimo_config_get_integer
 //
-long clowf_config_integer(config_t* cfg, const char* key)
+long nimo_config_integer(config_t* cfg, const char* key)
 {
-	const char* v =	clowf_config_string(cfg,key);
+	const char* v =	nimo_config_string(cfg,key);
 
 #define UNIT (1024L)
 
@@ -211,19 +211,19 @@ long clowf_config_integer(config_t* cfg, const char* key)
 #undef UNIT
 
 	// TODO : ***return 0 is not good for bad number***
-	
+
 	return 0L;
 }
 
 //
-// clowf_config_get_string 
+// nimo_config_get_string 
 //
-const char* clowf_config_string(config_t* cfg, const char* key)
+const char* nimo_config_string(config_t* cfg, const char* key)
 {
 	if (NULL == cfg)
 		return NULL;
 
-	for (int i=0;i!=cfg->used;i++) {
+	for (int i=0;i!=cfg->count;i++) {
 		if (0 == strcmp(key,cfg->kv_list[i].k)) {
 			// find it
 			return cfg->kv_list[i].v;
@@ -234,12 +234,12 @@ const char* clowf_config_string(config_t* cfg, const char* key)
 }
 
 //
-// clowf_config_release
+// nimo_config_release
 //
-void clowf_config_release(config_t* cfg)
+void nimo_config_release(config_t* cfg)
 {
 	if (cfg!=NULL) {
-		for (int i=0;i!=cfg->used;i++) {
+		for (int i=0;i!=cfg->count;i++) {
 			free(cfg->kv_list[i].k);
 			free(cfg->kv_list[i].v);
 		}
@@ -249,14 +249,14 @@ void clowf_config_release(config_t* cfg)
 }
 
 //
-// clowf_config_print
+// nimo_config_print
 //
-void clowf_config_print(config_t* cfg)
+void nimo_config_print(config_t* cfg)
 {
 	if (NULL==cfg)
 		return;
 
-	for (int i=0;i!=cfg->used;i++) {
+	for (int i=0;i!=cfg->count;i++) {
 		printf("[ %s = %s ]\n",cfg->kv_list[i].k,cfg->kv_list[i].v);
 	}
 

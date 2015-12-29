@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef __CLOWF_LIST_H__
-#define __CLOWF_LIST_H__
+#ifndef __NIMO_LIST_H__
+#define __NIMO_LIST_H__
 
 #ifdef  __cplusplus
 extern "c" {
@@ -77,4 +77,4 @@ void list_rewind_tail(list *list, list_iter *li);
 }
 #endif     
 
-#endif /* __CLOWF_LIST_H__ */
+#endif /* __NIMO_LIST_H__ */

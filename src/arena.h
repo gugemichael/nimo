@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef  __CLOWF_ARENA_H__
-#define __CLOWF_ARENA_H__
+#ifndef  __NIMO_ARENA_H__
+#define __NIMO_ARENA_H__
 
 #include <stdio.h>
 #include <stdlib.h>

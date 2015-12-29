@@ -4,8 +4,8 @@
  * Copyright (c) 2006  Dustin Sallings <dustin@spy.net>
  */
 
-#ifndef __CLOWF_GENHASH_H__
-#define __CLOWF_GENHASH_H__
+#ifndef __NIMO_GENHASH_H__
+#define __NIMO_GENHASH_H__
 
 
 #ifdef  __cplusplus
@@ -109,7 +109,7 @@ void genhash_free(genhash_t *h);
  * @param k the key
  * @param v the value
  */
-void genhash_store(genhash_t *h, const void *k, const void *v);
+void genhash_set(genhash_t *h, const void *k, const void *v);
 
 /**
  * Get the most recent value stored for the given key.
@@ -119,7 +119,7 @@ void genhash_store(genhash_t *h, const void *k, const void *v);
  *
  * @return the value, or NULL if one cannot be found
  */
-void* genhash_find(genhash_t *h, const void *k);
+void* genhash_get(genhash_t *h, const void *k);
 
 /**
  * Delete the most recent value stored for a key.
@@ -248,5 +248,5 @@ inline int genhash_string_hash(const void* p)
 }
 #endif     
 
-#endif /* __CLOWF_GENHASH_H__ */
+#endif /* __NIMO_GENHASH_H__ */
 
