@@ -17,9 +17,6 @@
 
 #define IS_NORMAL_LOG(log) (log==NORMAL_LOG)
 
-#include <sys/syscall.h>
-#define gettid() syscall(SYS_gettid)
-
 #include "os.h"
 
 struct __log_t* my_log = NULL;
@@ -142,7 +139,7 @@ __alloc_threadlocal_buf(log_t *log, int thread_specific) {
 		return NULL;
 
 	log->dirty_page[thread_specific]->size = log->logBufferPageCap;
-	log->dirty_page[thread_specific]->cursor = 0;
+	log->dirty_page[thread_specific]->cursor = 0L;
 	
 	return log->dirty_page[thread_specific];
 }
@@ -282,7 +279,7 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 	output = tmp;
 	
 	int output_len = 0 , valist_len = 0;
-	pid_t thread_specific = gettid();
+	pid_t thread_specific = os_gettid();
 	
 	const char* print_level = (level >= DEBUG && level <= ERROR) ? LOG_LEVEL[level] : LOG_LEVEL[UNKOWN];
 	
@@ -315,7 +312,6 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 			 * 3. release lock
 			 * 4. do slowly write
 			 */
-fprintf(stderr, "--%ld", cursor);
 			if (-1 != __write_file(my_log, type,flush_page->mem,cursor)) {
 				// flush buffer ok and reset cursor without clear memory
 				memcpy(flush_page->mem,output,len);
@@ -333,7 +329,7 @@ fprintf(stderr, "--%ld", cursor);
 		}
 	} else
 		__write_file(my_log, type,output,len);
-	
+
 	// update log time
 	my_log->touch_time = time_ms.tv_sec;
 }
@@ -345,8 +341,10 @@ int nimo_log_buffer(log_t* log, int size) {
 	if (!log)
 		return -1;
 
+#ifdef  __linux__
 	log->logBufferPageCap = size;
 	log->use_pagecache = 1;
+#endif     
 	
 	return 0;
 }

@@ -4,6 +4,17 @@
 
 /* #define os_fdatasync(fd) __compile_error__ */
 
+// gettid
+#include <sys/syscall.h>
+
+#ifdef __linux__
+	#define os_gettid() syscall(SYS_gettid)
+#elif (defined(__APPLE__) && defined(__MACH__))
+	#define os_gettid() syscall(SYS_gettid)
+#else
+	#define os_gettid __compile_error__
+#endif
+
 // fsync
 #ifdef __linux__
 	#define os_fdatasync fdatasync
