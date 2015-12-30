@@ -8,27 +8,47 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  YOUR NAME (), 
+ *         Author:  Michael LiuXin
  *   Organization:  
  *
  * =====================================================================================
  */
 #include <stdlib.h>
+#include <pthread.h>
 
-#include "ub_mempool.h"
+#include "nimo/log.h"
+#include "nimo/arena.h"
+
+#define threads (6)
+
+size_t logs[threads] = {0};
+
+uint32_t allocated = 0L;
+
+void sleep_test() {
+	usleep(1000000);
+}
 
 int main()
 {
-	ub_log_split_init("mempool",0,0,64);
 
-	ub_log_page_buffer();
+	nimo_log_init(NULL);
 
-	ublog_debug("start allocating ...");
+	void* block = arena_create(2, ARENA_UNIT_IN_MB);
 
-	int allocate_times = 100000;
-	while(allocate_times--) {
-		ublog_debug("[warn=memory] memory pool allocate faild");
-	}
+	while(NULL != arena_alloc(block,44))
+		allocated += 44;
+
+	nimo_log_debug("total : %lu bytes , allocated %lu bytes", 2 * ARENA_UNIT_IN_MB, allocated);
+
+	arena_destroy(block);
+
+	nimo_log_destroy();
+
 
 	return 0;
 }
+
+
+
+

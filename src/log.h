@@ -56,7 +56,7 @@ extern "C" {
 
 typedef enum __log_level {
 	DEBUG = 0,
-	TRACE,
+	INFO,
 	WARNNING,
 	ERROR,
 	UNKOWN
@@ -112,7 +112,7 @@ log_t* nimo_log_split_init(const char* filepath, unsigned long long ts, size_t s
 /* Destroy log handle 
  * 
  * */
-void nimo_log_destroy(log_t*);
+void nimo_log_destroy();
 
 
 /* Do actual write disk (may be cached) . DON'T call it directly 
@@ -161,7 +161,7 @@ log_write(DEBUG,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 
 #ifndef NON_USE_NIMO_LOG
 #define nimo_log_info(buf,...) do{\
-log_write(TRACE,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
+log_write(INFO,__FILE__,__FUNCTION__,__LINE__,buf,##__VA_ARGS__);\
 }while(0)
 #else 
 #define nimo_log_info(buf,...) do{}while(0)

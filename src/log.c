@@ -22,7 +22,7 @@
 struct __log_t* my_log = NULL;
 
 const char* LOG_LEVEL[] = {
-	"DEBUG","TRACE","WARN","ERROR","UNKOWN"
+	"DEBUG","INFO","WARN","ERROR","UNKOWN"
 };
 
 
@@ -160,7 +160,7 @@ log_t* nimo_log_init(const char* filepath) {
 	static const char* err = LOG_PATH"%s.log.wf";
 	
 	char file_name[2][FILE_NAME_MAX] = {"",""};
-	my_log = (log_t*)calloc(1,sizeof(log_t));
+	my_log = (log_t*)calloc(1, sizeof(log_t));
 	log_t* feedback = my_log;
 	
 	if (NULL == feedback) {
@@ -227,27 +227,28 @@ log_t* nimo_log_split_init(const char* filepath, unsigned long long ts, size_t s
 	return my_log;
 }
 
-void nimo_log_destroy(log_t* log) {
-	if (!log) {
+void nimo_log_destroy() {
+	if (my_log) {
 		// release lock resource
-		pthread_mutex_destroy(&log->split_lock);
+		pthread_mutex_destroy(&my_log->split_lock);
 		// flush dirty content
-		if (log->use_pagecache) {
+		if (my_log->use_pagecache) {
 			for (int i=MAX_THREADS;i!=0;i--)
-				if (log->dirty_page[i])
-					__write_file(log, NORMAL_LOG,log->dirty_page[i]->mem,
-							log->dirty_page[i]->cursor);
+				if (my_log->dirty_page[i])
+					__write_file(my_log, NORMAL_LOG,my_log->dirty_page[i]->mem, my_log->dirty_page[i]->cursor);
 		}
-		close(log->normal_file);
-		close(log->error_file);
+		close(my_log->normal_file);
+		close(my_log->error_file);
 		for (int i=0;i!=MAX_THREADS;i++) {
-			if (log->dirty_page[i] != NULL) {
-				free(log->dirty_page[i]);
-				free(log->dirty_page[i]->mem);
+			if (my_log->dirty_page[i] != NULL) {
+				free(my_log->dirty_page[i]);
+				my_log->dirty_page[i] = NULL;
 			}
 		}
-		free(log);
-		log = NULL;
+
+		free(my_log);
+
+		my_log = NULL;
 	}
 }
 
@@ -271,12 +272,11 @@ void log_write(log_level level, const char* file, const char* func_name,unsigned
 	if ((my_log->normal_file!=1) && (my_log->split_size!=0 || my_log->split_time!=0))
 		__check_file_stat(my_log, time_ms.tv_sec);
 	
-	int fd = level <= TRACE && level >= DEBUG ? my_log->normal_file : my_log->error_file;
+	int fd = level <= INFO && level >= DEBUG ? my_log->normal_file : my_log->error_file;
 	int type = (fd == my_log->normal_file) ? NORMAL_LOG : ERROR_LOG;
 	
 	char tmp[OUTPUT_STRING_MAX + 1] = {0};
-	char *output = NULL;
-	output = tmp;
+	char *output = tmp;
 	
 	int output_len = 0 , valist_len = 0;
 	pid_t thread_specific = os_gettid();

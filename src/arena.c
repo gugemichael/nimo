@@ -17,13 +17,15 @@
 
 #include "arena.h"
 
+#define MAGIC_NR (0x1314)
+
 /**
  * Don't allocate more than 10M space, because this mempool
  * just implement simple way of pool, it don't free anything
  * util call arena_destroy(), this feature is based 
  * on JUST USE it in an funtion or in one class
  */
-void* arena_create(uint32_t size)
+void* arena_create(uint32_t size, long size_unit)
 {
 	if (size==0 || size>=1024*10) {
 		return NULL;
@@ -32,43 +34,48 @@ void* arena_create(uint32_t size)
 	// align of 4 byte
 	// size += size % 4;
 
-	_arena_mem_t *pool = (_arena_mem_t*)calloc(1,sizeof(_arena_mem_t));
-	pool->size = 1024*size;
-	pool->area = calloc(1,1024*size);
-	pool->cursor = pool->area;
+	int bytes = size_unit * size;
 
+	arena_block *pool = (arena_block*) calloc(1,sizeof(*pool) + bytes);
+	pool->magic_nr = MAGIC_NR;
+	pool->capacity = bytes;
+	pool->cursor = pool->arena;
 
 	return pool;
 }
 
-uint32_t arena_remain_cap(_arena_mem_t *pool) 
+uint32_t arena_remain_cap(void *pool) 
 {
-	if (NULL == pool)
-		return -1;	
-	else return pool->size - (pool->cursor - pool->area);
+	if (NULL == pool || ((arena_block*)pool)->magic_nr != MAGIC_NR)
+		return 0;	
+
+	return ((arena_block*)pool)->capacity;
 }
 
-void* arena_alloc(_arena_mem_t* pool, uint32_t n)
+void* arena_alloc(void *pool, uint32_t n)
 {
-	// no space here
-	if (NULL==pool || NULL==pool->area) {
+	arena_block* block = (arena_block*)pool;
+
+	if (NULL == pool || block->magic_nr != MAGIC_NR)
 		return NULL;
-	}
 
-	void* ret = pool->cursor;
+	// no space here
+	if (block->cursor + n > block->arena + block->capacity)
+		return NULL;
+
 	// move the cursor
-	pool->cursor = (void*)((char*)pool->cursor + n);
+	block->cursor = (char*)block->cursor + n;
 
-	return ret;
+	return block->cursor;
 }
 
 
-void arena_destroy(_arena_mem_t* pool)
+void arena_destroy(void* pool)
 {
-	if (NULL == pool)
+	if (NULL == pool || ((arena_block*)pool)->magic_nr != MAGIC_NR)
 		return;
 
-	free(pool->area);
-	pool->cursor = pool->area = NULL;	
-	pool->size = 0;
+	((arena_block*)pool)->capacity = 0;
+
+	free(pool);
 }

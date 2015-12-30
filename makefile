@@ -60,5 +60,8 @@ $(ENV):
 	$(MKDIR) $(TARGET_LIB)
 
 clean:
-	$(RM) $(OBJFILES) $(TARGET_PATH) ${TAGS} ${CSCP}
+	$(RM) $(TARGET_PATH) ${TAGS} ${CSCP}
+
+check:
+	cppcheck --enable=all --platform=unix64 . 
 

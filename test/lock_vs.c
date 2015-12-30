@@ -13,12 +13,12 @@
 #include <string.h>
 #include <pthread.h>
 
-typedef struct
-{
-	char key[128];
-	char cluster[64];
-	int role;
-} ck_key;
+//typedef struct
+//{
+//	char key[128];
+//	char cluster[64];
+//	int role;
+//} ck_key;
 
 #define MMAP_SIZE 512
 
