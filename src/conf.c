@@ -30,7 +30,7 @@ config_t* nimo_config_load_from_file(const char* fpath)
 		return NULL;
 
 	size_t file_len = 1024, len = 0;
-	char*  buf = (char*)calloc(1,file_len);
+	char*  buf = (char*) calloc(1, file_len);
 	// keep reading until EOF
 	while(!feof(conf)) {
 		int n = fread(buf+len,1,1024,conf);
@@ -63,12 +63,12 @@ config_t* nimo_config_load(const char* cfg)
 	if (len < 3)
 		return NULL;
 
-	config_t* config = (config_t*)calloc(1,sizeof(config_t));
+	config_t* config = (config_t*) calloc(1, sizeof(config_t));
 	if (NULL==config)
 		goto check_exception;
 
 	// alloc kv pairs
-	config->kv_list = (kv_t*)calloc(CONFIG_INIT_LEN,sizeof(kv_t));
+	config->kv_list = (kv_t*) calloc(CONFIG_INIT_LEN, sizeof(kv_t));
 	if (NULL == config->kv_list)
 		goto cleanup;
 
@@ -117,7 +117,7 @@ config_t* nimo_config_load(const char* cfg)
 			}
 
 			// alloc len(key) + '\0' space
-			char* tmp_key = (char*) malloc(key-cur+1);
+			char* tmp_key = (char*) calloc(1, key - cur + 1);
 			if (!tmp_key)
 				goto keepgo;
 			memcpy(tmp_key,cur,key-cur);
@@ -149,7 +149,7 @@ config_t* nimo_config_load(const char* cfg)
 				else
 					value++;
 			}
-			char* tmp_value = (char*)calloc(1,value-cur+2);
+			char* tmp_value = (char*) calloc(1,value - cur + 2);
 
 			// don't copy "\n"
 			memcpy(tmp_value,cur,value-cur+1);
