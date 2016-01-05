@@ -43,9 +43,12 @@ AR = ar -r
 COMPILER = $(CC) $(INCLUDE) $(LIBS_PATH) $(LIBS)
 ####################################################
 
-all: $(TARGET)
+all: TAGS $(TARGET)
+
+TAGS:
 	ctags -R --fields=+iaS --extra=+q
 	cscope -bkqR
+
 
 $(TARGET): $(ENV) $(OBJFILES)
 	$(AR) $(TARGET_PATH)/$(TARGET) ${SRC}/*.o

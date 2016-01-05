@@ -75,3 +75,6 @@ CMakeFiles
 
 test/test-*
 test/test
+
+core
+core.*
