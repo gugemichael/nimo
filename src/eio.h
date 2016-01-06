@@ -10,8 +10,7 @@
  *
  * Version : 1.0
  * Created : 09/19/2012 09:25:52 PM
- * Filename : nimo_log.h
- * Description : log with split files
+ * Filename : eio.h
  * Compiler : g++ 4.6.1
  * Author : Michael LiuXin
  *
@@ -40,11 +39,11 @@ struct eio_stats;
 typedef struct __eio_loop eio_loop;
 
 enum EIO_EVENT {
-	EIO_CLEAR = 0,
-	EIO_READ = 1,
-	EIO_WRITE = 2,
-	TIMER = 4,
-	EIO_CLOSE = 8
+	EIO_READABLE 	= 1,
+	EIO_WRITEABLE 	= 2,
+	EIO_ERR 	= 4,
+	EIO_CLEAR 	= 8,
+	EIO_TIMER 	= 16
 };
 
 
@@ -59,14 +58,25 @@ typedef void (*ev_file_proc) (eio_loop *eventLoop, int fd, int event, void *cont
 typedef int (*ev_time_proc) (eio_loop *eventLoop, void *context);
 
 
-/* Event descriptor
- *
- * */
+/**
+ * Event descriptor
+ */
 struct eio_event {
 	uint32_t mask;
-	uint32_t ep_mask;
-	ev_file_proc rproc;
-	ev_file_proc wproc;
+
+	union {
+		struct {
+			uint32_t ep_mask; 		/* epoll mask bitset */
+			ev_file_proc rproc;
+			ev_file_proc wproc;
+			ev_file_proc errproc;
+		} file;
+
+		struct {
+			ev_time_proc tproc;
+		} time;
+	} ev;
+
 	void* user_data;
 };
 
@@ -75,8 +85,9 @@ struct eio_event {
  *
  * */
 struct eio_stats {
-	unsigned long conns;
-	unsigned long timer_events;
+	uint64_t conns;
+	uint64_t timer_events;
+	uint64_t file_events;
 };
 
 
@@ -85,7 +96,7 @@ struct eio_stats {
  * */
 struct __eio_loop {
 
-	int run; 		// running flag
+	volatile int run; 		// running flag
 	int epfd; 		// polling resource descriptor
 
 	int hz; 		// frequence of timer event check. implemention by epoll_wait timeout on period time
@@ -113,9 +124,7 @@ struct __eio_loop {
  * */
 eio_loop* new_eio_loop(unsigned int max);
 
-void eio_loop_set_event_hz(eio_loop* eio, unsigned int hz);
-
-/* register events
+/* register file events
  * 
  * @params eio , eio_loop handle
  * @params fd  , file descriptor 
@@ -127,6 +136,19 @@ void eio_loop_set_event_hz(eio_loop* eio, unsigned int hz);
  *
  * */
 int eio_loop_file_event(eio_loop *eio, int fd, int mask, ev_file_proc proc, void* context);
+
+/* register time events
+ * 
+ * @params eio, eio_loop handle
+ * @params period, period time between every event fired in milliseconds
+ * @params mask, file event register mask flags in EIO_EVENT 
+ * @params proc, file event handler on event happening
+ * @params proc, user data
+ *
+ * @return zero on success or -1 on failed
+ *
+ * */
+int eio_loop_time_event(eio_loop *eio, int period, int mask, ev_file_proc proc, void* context);
 
 
 /* stop the loop. before the eio_loop_destroy

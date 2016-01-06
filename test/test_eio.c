@@ -65,6 +65,8 @@ void tcp_read(eio_loop* eio, int server_socket, int mask, void* context);
 void tcp_close(eio_loop* loop, int clientfd);
 
 
+int LIMIT = 0;
+
 void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 {
 	// the server must be accepted
@@ -87,7 +89,7 @@ void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 			nimo_log_error("[warn=socket] socket TCP_NODELAY set faild");
 
 		// add the client_fd to epoll loop
-		eio_loop_file_event(eio, cfd, EIO_READ, tcp_read, NULL);
+		eio_loop_file_event(eio, cfd, EIO_READABLE, tcp_read, NULL);
 
 	} else {
 		nimo_log_error("[err=socket] socket accept faild , errcode : %d, errmsg : %s",errno,strerror(errno));
@@ -108,7 +110,8 @@ void tcp_close(eio_loop* loop, int clientfd)
 
 void tcp_write(eio_loop* eio, int clientfd, int mask, void* context)
 {
-	const char* echo = "nimo_eio_server\n";
+	//const char* echo = "nimo_eio_server\n";
+	const char* echo = "+OK\r\n";
 	size_t len = strlen(echo);
 	while(1) {
 		int n = write(clientfd,echo,len);
@@ -122,7 +125,7 @@ void tcp_write(eio_loop* eio, int clientfd, int mask, void* context)
 			break;
 	}
 
-	eio_loop_file_event(eio, clientfd, EIO_READ, tcp_read, NULL);
+	eio_loop_file_event(eio, clientfd, EIO_READABLE, tcp_read, NULL);
 }
 
 void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
@@ -135,6 +138,8 @@ void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
 	char buffer[1024] = {0};
 	while(1) {
 		ret = read(clientfd,buffer,1024);
+		if (LIMIT++ == 1000000)
+			; // exit(0);
 		if (0 == ret) {
 			nimo_log_debug("[ok=socket] socket fd[%d] closed",clientfd);
 			tcp_close(eio, clientfd);
@@ -142,7 +147,7 @@ void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
 		} else if (-1 == ret) { 
 			if (errno == EAGAIN) {
 				// would blocking
-				eio_loop_file_event(eio, clientfd, EIO_WRITE, tcp_write, NULL);
+				eio_loop_file_event(eio, clientfd, EIO_WRITEABLE, tcp_write, NULL);
 			} else {
 				nimo_log_error("[err=socket] read error[%s] , tcp close",strerror(errno));
 				tcp_close(eio, clientfd);
@@ -208,7 +213,7 @@ int ut_main()
 	}
 
 	// firstly listen the server's socket with ACCEPT
-	eio_loop_file_event(loop, server_socket, EIO_READ, tcp_accept, NULL);
+	eio_loop_file_event(loop, server_socket, EIO_READABLE, tcp_accept, NULL);
 
 	printf("eio server run backgroud\n");
 
