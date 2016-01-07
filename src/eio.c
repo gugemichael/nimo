@@ -43,37 +43,97 @@ error:
 /** 
  * eio_loop_file_event
  */
-int eio_loop_file_event(eio_loop *eio, int fd, int mask, ev_file_proc proc, void* context) {
+int eio_loop_file_event(eio_loop *eio, int fd, int mask, int op, ev_file_proc proc, void* context) {
 
 	assert(eio != NULL);
 	assert(fd > 0);
 	assert(eio->max_events > fd);
-	assert(((mask & EIO_CLEAR) && proc == NULL) || (!(mask & EIO_CLEAR) && proc != NULL));
+	assert(((op & EIO_EVENT_CLEAR) && proc == NULL) || (!(op & EIO_EVENT_CLEAR) && proc != NULL));
+//  assert(((op & EIO_EVENT_CLEAR) && mask == EIO_NONE) || (!(op & EIO_EVENT_CLEAR) && mask != EIO_NONE));
 
 	struct epoll_event ev = {0};
 	ev.data.fd = fd;        
 
-	// EPOLLHUP and EPOLLERR is automatic and always associated events
-	
+	// get current event bitset
+	ev.events = eio->eio_evs[fd].ev.file.ep_mask;
+
+	// decide op on fd MOD or ADD
+	int ep_ctl = 0;
+
+//  ev.events |= EPOLLET;
+
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,17)
 	ev.events |= EPOLLRDHUP;
 #endif
 
-	// use eadge trigger 
-	ev.events |= EPOLLET;
+	switch (op) {
 
-	if (mask & EIO_WRITEABLE)
-		ev.events |= EPOLLOUT;
-	if (mask & EIO_READABLE)
-		ev.events |= EPOLLIN; 
+		case EIO_EVENT_ADD:
+
+			if (mask & EIO_WRITEABLE) {
+				ev.events |= EPOLLOUT;
+				eio->eio_evs[fd].ev.file.wproc = proc;
+			}
+			if (mask & EIO_READABLE) {
+				ev.events |= EPOLLIN; 
+				eio->eio_evs[fd].ev.file.rproc = proc;
+			}
+			if (mask & EIO_ERR)
+				eio->eio_evs[fd].ev.file.errproc = proc;
+
+			// add or update
+			ep_ctl = eio->eio_evs[fd].mask ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+
+			eio->eio_evs[fd].mask |= mask;
+			eio->eio_evs[fd].ev.file.ep_mask = ev.events;
+
+			break;
+
+		case EIO_EVENT_DEL:
+
+			if (eio->eio_evs[fd].mask == EIO_NONE)
+				return eio_failed;
+
+			// unregister
+			if (mask & EIO_WRITEABLE) {
+				ev.events &= ~EPOLLOUT;
+				eio->eio_evs[fd].ev.file.wproc = NULL;
+			}
+			if (mask & EIO_READABLE) {
+				ev.events &= ~EPOLLIN; 
+				eio->eio_evs[fd].ev.file.rproc = NULL;
+			}
+			if (mask & EIO_ERR)
+				eio->eio_evs[fd].ev.file.errproc = NULL;
+
+			eio->eio_evs[fd].mask &= ~mask;
+			eio->eio_evs[fd].ev.file.ep_mask = ev.events;
+
+			// update or delete
+			ep_ctl = (eio->eio_evs[fd].mask) ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+
+			break;
 
 
-	// decide op on fd MOD or ADD
-	int op = 0;
-	if (EIO_CLEAR & mask)
-		op = EPOLL_CTL_DEL;
-	else
-		op = eio->eio_evs[fd].mask ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+		case EIO_EVENT_CLEAR:
+
+			eio->eio_evs[fd].mask = EIO_NONE;
+			eio->eio_evs[fd].ev.file.ep_mask = 0;
+
+			// delete
+			ep_ctl = EPOLL_CTL_DEL;
+
+			break;
+
+		case EIO_EVENT_GET:
+			assert(context != NULL);
+
+			memcpy(context, &eio->eio_evs[fd].mask, sizeof(eio->eio_evs[fd].mask));
+			return eio_ok;
+
+	}
+
+	eio->eio_evs[fd].user_data = context;
 
 	/*
 	 * we discard return -1 and error. because of duplicated register
@@ -83,29 +143,7 @@ int eio_loop_file_event(eio_loop *eio, int fd, int mask, ev_file_proc proc, void
 	 * Note: Kernel < 2.6.9 requires a non null event pointer even for *EPOLL_CTL_DEL*
 	 *
 	 */
-	if (-1 == epoll_ctl(eio->epfd, op, fd, &ev))
-		return -1;
-
-	if (mask & EIO_READABLE)
-		eio->eio_evs[fd].ev.file.rproc = proc;
-	if (mask & EIO_WRITEABLE)
-		eio->eio_evs[fd].ev.file.wproc = proc;
-	if (mask & EIO_ERR)
-		eio->eio_evs[fd].ev.file.errproc = proc;
-
-	// update mask bitset
-	if (mask & EIO_CLEAR) {
-		eio->eio_evs[fd].mask = eio->eio_evs[fd].ev.file.ep_mask = 0;
-		eio->eio_evs[fd].user_data = NULL;
-		eio->eio_evs[fd].ev.file.rproc = NULL;
-		eio->eio_evs[fd].ev.file.wproc = NULL;
-	} else {
-		eio->eio_evs[fd].mask = mask;
-		eio->eio_evs[fd].ev.file.ep_mask = ev.events;
-		eio->eio_evs[fd].user_data = context;
-	}
-
-	return 0;
+	return epoll_ctl(eio->epfd, ep_ctl, fd, &ev);
 }
 
 
@@ -123,9 +161,9 @@ void eio_loop_destroy(eio_loop *eio) {
 
 
 /**
- * eio_loop_use_before_proc
+ * eio_loop_before_proc
  */
-void eio_loop_use_before_proc(eio_loop *loop, eio_loop_before proc) {
+void eio_loop_before_proc(eio_loop *loop, eio_loop_before proc) {
 	assert(loop != NULL);
 
 	loop->before = proc;
@@ -170,13 +208,23 @@ static int poll_file_event(eio_loop* eio) {
 		   ) {
 
 			// for ERROR
-			if (event->ev.file.errproc != NULL)
+			if (event->ev.file.errproc) {
 				event->ev.file.errproc(eio, eio->poll_evs[i].data.fd, EIO_ERR, event->user_data);
-		} else if ((eio->poll_evs[i].events & EPOLLIN) && event->ev.file.rproc) {
+				// don't trigger EPOLLIN
+				continue;
+			}
+		} 
+
+		if ((happen & EPOLLIN) && event->ev.file.rproc) {
 			// for READ
+//			event->mask &= ~EIO_READABLE;
+//			event->ev.file.ep_mask &= ~EPOLLIN;
 			event->ev.file.rproc(eio, eio->poll_evs[i].data.fd, EIO_READABLE, event->user_data);
-		} else if ((eio->poll_evs[i].events & EPOLLOUT) && event->ev.file.wproc) {
+		} 
+		if ((eio->poll_evs[i].events & EPOLLOUT) && event->ev.file.wproc) {
 			// for WRITE
+//			event->mask &= ~EIO_WRITEABLE;
+//			event->ev.file.ep_mask &= ~EPOLLOUT;
 			event->ev.file.wproc(eio, eio->poll_evs[i].data.fd, EIO_WRITEABLE, event->user_data);
 		}
 	}
@@ -213,5 +261,4 @@ eio_loop* eio_loop_run(eio_loop *eio) {
 
 	return eio;
 }
-
 

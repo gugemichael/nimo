@@ -25,6 +25,7 @@ extern "C" {
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -38,12 +39,21 @@ struct eio_stats;
 
 typedef struct __eio_loop eio_loop;
 
+#define eio_ok 0
+#define eio_failed 1
+
+#define EIO_EVENT_ADD 	1
+#define EIO_EVENT_DEL 	2
+#define EIO_EVENT_CLEAR 4
+#define EIO_EVENT_GET 	8
+
 enum EIO_EVENT {
+	EIO_NONE 		= 0,
 	EIO_READABLE 	= 1,
 	EIO_WRITEABLE 	= 2,
-	EIO_ERR 	= 4,
-	EIO_CLEAR 	= 8,
-	EIO_TIMER 	= 16
+	EIO_ERR 		= 4,
+	//EIO_CLEAR 	= 8,
+	EIO_TIMER 		= 16
 };
 
 
@@ -96,13 +106,13 @@ struct eio_stats {
  * */
 struct __eio_loop {
 
-	volatile int run; 		// running flag
-	int epfd; 		// polling resource descriptor
+	volatile int run; 	// running flag
+	int epfd; 			// polling resource descriptor
 
-	int hz; 		// frequence of timer event check. implemention by epoll_wait timeout on period time
-					// so we suggest with 100hz one second times (means every 10ms)
+	int hz; 			// frequence of timer event check. implemention by epoll_wait timeout on period time
+						// so we suggest with 100hz one second times (means every 10ms)
 
-	struct eio_stats stats; 	/* stats of loop */	
+	struct eio_stats stats; 		/* stats of loop */	
 
 	int max_events;
 	struct eio_event *eio_evs; 		/* register client event array */
@@ -129,13 +139,15 @@ eio_loop* new_eio_loop(unsigned int max);
  * @params eio , eio_loop handle
  * @params fd  , file descriptor 
  * @params mask, file event register mask flags in EIO_EVENT 
+ * @params op  , operation on fd 
  * @params proc, file event handler on event happening
  * @params proc, user data
  *
  * @return zero on success or -1 on failed
  *
  * */
-int eio_loop_file_event(eio_loop *eio, int fd, int mask, ev_file_proc proc, void* context);
+int eio_loop_file_event(eio_loop *eio, int fd, int mask, int op, ev_file_proc proc, void* context);
+
 
 /* register time events
  * 
@@ -172,11 +184,13 @@ void eio_loop_destroy(eio_loop *eio);
  * trigger. DON't supply a few heavy task in it
  * 
  * */
-void eio_loop_use_before_proc(eio_loop *loop, eio_loop_before proc);
+void eio_loop_before_proc(eio_loop *loop, eio_loop_before proc);
 
 
 /* keep running the reactor !
  * 
+ * @return eio loop instance
+ *
  * */
 eio_loop* eio_loop_run(eio_loop *eio);
 

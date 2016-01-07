@@ -75,6 +75,8 @@ CMakeFiles
 
 test/test-*
 test/test
+test/client
 
 core
 core.*
+*.core

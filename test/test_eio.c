@@ -32,6 +32,8 @@
 #include <stddef.h>
 #include <inttypes.h>
 
+#include <stdbool.h>
+
 #include <netinet/tcp.h>
 #include <string.h>
 #include <strings.h>
@@ -39,6 +41,7 @@
 #include <error.h>
 
 #include <sys/epoll.h>
+#include <stdlib.h>
 
 #include "nimo/log.h"
 #include "nimo/eio.h"
@@ -59,6 +62,16 @@
 
 #define SESSION_MONITOR
 
+volatile long qps = 0;
+
+void* qps_monitor(void* a) {
+	while(1) {
+		fprintf(stderr, "qps is %ld\n", qps);
+		qps = 0;
+		sleep(1);
+	}
+}
+
 void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context);
 void tcp_write(eio_loop* eio, int server_socket, int mask, void* context);
 void tcp_read(eio_loop* eio, int server_socket, int mask, void* context);
@@ -66,6 +79,11 @@ void tcp_close(eio_loop* loop, int clientfd);
 
 
 int LIMIT = 0;
+
+void tcp_error(eio_loop* eio, int server_socket, int mask, void* context) {
+	nimo_log_error("error handler on fd %d", server_socket);
+	tcp_close(eio, server_socket);
+}
 
 void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 {
@@ -75,7 +93,7 @@ void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 
 	int cfd = accept(server_socket,(struct sockaddr*)&client,&client_size);
 
-	nimo_log_debug("[ok=accept] fd[%d] connected", cfd);
+	nimo_log_info("[accept] fd[%d] connected", cfd);
 
 	if (cfd != -1) {
 		int flag = fcntl(cfd,F_GETFL,0);
@@ -88,8 +106,13 @@ void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 		if (-1 == setsockopt(cfd,IPPROTO_TCP,TCP_NODELAY,&nodelay,sizeof(nodelay)))
 			nimo_log_error("[warn=socket] socket TCP_NODELAY set faild");
 
+		nimo_log_info("[eio] after accept fd[%d] event %d", cfd, eio_loop_get_file_event(eio, cfd));
+
 		// add the client_fd to epoll loop
-		eio_loop_file_event(eio, cfd, EIO_READABLE, tcp_read, NULL);
+		eio_loop_file_event(eio, cfd, EIO_READABLE, EIO_EVENT_ADD, tcp_read, NULL);
+		nimo_log_info("[eio] fd[%d] event %d", cfd, eio_loop_get_file_event(eio, cfd));
+		eio_loop_file_event(eio, cfd, EIO_ERR, EIO_EVENT_ADD, tcp_error, NULL);
+		nimo_log_info("[eio] fd[%d] event %d", cfd, eio_loop_get_file_event(eio, cfd));
 
 	} else {
 		nimo_log_error("[err=socket] socket accept faild , errcode : %d, errmsg : %s",errno,strerror(errno));
@@ -100,16 +123,18 @@ void tcp_accept(eio_loop* eio, int server_socket, int mask, void* context)
 
 void tcp_close(eio_loop* loop, int clientfd)
 {
-	nimo_log_debug("[ok=socket] Client socket close");
+	nimo_log_info("[ok=socket] Client socket close");
 
 	// clean up event in epoll
-	eio_loop_file_event(loop, clientfd, EIO_CLEAR, NULL, NULL);
+	eio_loop_file_event(loop, clientfd, EIO_NONE, EIO_EVENT_CLEAR, NULL, NULL);
+	nimo_log_info("[eio] fd[%d] event %d", clientfd, eio_loop_get_file_event(loop, clientfd));
 
 	close(clientfd);
 }
 
 void tcp_write(eio_loop* eio, int clientfd, int mask, void* context)
 {
+	qps++;
 	//const char* echo = "nimo_eio_server\n";
 	const char* echo = "+OK\r\n";
 	size_t len = strlen(echo);
@@ -125,7 +150,9 @@ void tcp_write(eio_loop* eio, int clientfd, int mask, void* context)
 			break;
 	}
 
-	eio_loop_file_event(eio, clientfd, EIO_READABLE, tcp_read, NULL);
+	eio_loop_file_event(eio, clientfd, EIO_WRITEABLE, EIO_EVENT_DEL, tcp_write, NULL);
+
+	nimo_log_debug("[eio] fd[%d] event %d", clientfd, eio_loop_get_file_event(eio, clientfd));
 }
 
 void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
@@ -139,15 +166,16 @@ void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
 	while(1) {
 		ret = read(clientfd,buffer,1024);
 		if (LIMIT++ == 1000000)
-			; // exit(0);
+			exit(0);
 		if (0 == ret) {
-			nimo_log_debug("[ok=socket] socket fd[%d] closed",clientfd);
+			nimo_log_error("[ok=socket] socket fd[%d] read zero ! closed under mask %d",clientfd, mask);
 			tcp_close(eio, clientfd);
 			break;
 		} else if (-1 == ret) { 
 			if (errno == EAGAIN) {
 				// would blocking
-				eio_loop_file_event(eio, clientfd, EIO_WRITEABLE, tcp_write, NULL);
+				eio_loop_file_event(eio, clientfd, EIO_WRITEABLE, EIO_EVENT_ADD, tcp_write, NULL);
+				nimo_log_debug("[eio] fd[%d] event %d", clientfd, eio_loop_get_file_event(eio, clientfd));
 			} else {
 				nimo_log_error("[err=socket] read error[%s] , tcp close",strerror(errno));
 				tcp_close(eio, clientfd);
@@ -162,11 +190,18 @@ void tcp_read(eio_loop* eio, int clientfd, int mask, void* context)
 
 
 #define ut_main main
-int ut_main() 
+int ut_main(int argc, char** argv) 
 {
 	log_t *log = nimo_log_init(NULL);
 
-	nimo_log_level(log, DEBUG);
+	nimo_log_level(log, INFO);
+
+	if (argc < 2) {
+		fprintf(stderr,"port number not specified %d\n", argc);
+		return -1;
+	}
+
+	int port = atoi(argv[1]);
 
 	// setup a socket
 	int server_socket = socket(AF_INET,SOCK_STREAM,0);
@@ -181,7 +216,7 @@ int ut_main()
 	bzero(&server_addr,sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = htons(INADDR_ANY);
-	server_addr.sin_port = htons(6789);
+	server_addr.sin_port = htons(port);
 
 	int flag=1,len=sizeof(flag);
 
@@ -195,7 +230,7 @@ int ut_main()
 		nimo_log_error("[err=socket] socket bind faild");
 		return -1; 
 	} else
-		nimo_log_debug("[ok=socket] socket bind on port[%d] success",6789);
+		nimo_log_debug("[ok=socket] socket bind on port[%d] success",port);
 	if (-1 == listen(server_socket,BACKLOG)) {
 		nimo_log_error("[err=socket] socket listen faild");
 	} else	
@@ -205,7 +240,7 @@ int ut_main()
 	// create a epoll server handle
 	eio_loop *loop = new_eio_loop(1024);
 
-	//eio_loop_set_event_hz(loop, 10);
+	loop->hz = 1;
 
 	if (loop == NULL) {
 		nimo_log_debug("create eio server error ! ");
@@ -213,9 +248,12 @@ int ut_main()
 	}
 
 	// firstly listen the server's socket with ACCEPT
-	eio_loop_file_event(loop, server_socket, EIO_READABLE, tcp_accept, NULL);
+	eio_loop_file_event(loop, server_socket, EIO_READABLE, EIO_EVENT_ADD, tcp_accept, NULL);
 
 	printf("eio server run backgroud\n");
+
+	pthread_t pid;
+	pthread_create(&pid,NULL,qps_monitor,NULL);
 
 	// do event loop 
 	eio_loop_run(loop);

@@ -6,12 +6,12 @@
  * Contributors can discuss or commit code at
  *
  *  http://blog.csdn.net/gugemichael (Blog)
- *  https://github.com/gugemichel/libub (Git)
+ *  https://github.com/gugemichel/libnimo (Git)
  *
  * Version : 1.0
  * Created : 11/22/2012 10:43:00 AM
- * Filename : ub.h
- * Description : UB c library general tools
+ * Filename : nimo.h
+ * Description : Nimo c library general tools
  * Compiler : g++ 4.6.1
  * Author : Michael LiuXin
  *
@@ -27,32 +27,33 @@
 extern "C" {
 #endif
 
+
 // branch predict
 #define likely(x) __builtin_expect(!!(x),1)
 #define unlikely(x) __builtin_expect(!!(x),0)
+
 
 // useless code comment
 #define NIMO_NON_USE(expr) do {(void)(expr);} while (0)
 
 // NIMO_DEBUG dependency assert
 #ifdef NIMO_DEBUG
-#define nimo_assert(x) assert(x);
+#define nimo_assert(expr) assert((expr))
 #else
-#define nimo_assert(x) ;
+#define nimo_assert(expr) do {(void)(expr);} while (0)
 #endif
 
+
 #ifndef nimo_ok
-#define nimo_ok (0)
+#define nimo_ok 0
 #define nimo_fail (!(nimo_ok))
 #endif
 
 
-#if HAVE_STDBOOL_H                                                                                              
-#include <stdbool.h>                                                                                            
-#else
+#ifndef _STDBOOL_H
 #define bool char                                                                                               
 #define false 0                                                                                                 
-#define true 1                                                                                                  
+#define true !0
 #endif 
 
 
@@ -85,15 +86,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-
-#include "atomic.h"
-#include "log.h"
-#include "list.h"
-#include "queue.h"
-#include "arena.h"
-#include "hash.h"
-
 
 #endif
 

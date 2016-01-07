@@ -32,13 +32,14 @@
 #include <string.h>
 #include <strings.h>
 
-#define IP "127.0.0.1"
-#define PORT 6789
 
 #define OUTPUT (0)
 #define LONG_CONNECT (0)
 
-#define THREADS_NUM (6)
+#define THREADS_NUM (10)
+
+int PORT = 0;
+char IP[64] = {0};
 
 size_t Qps = 0;
 int g_still_write=1;
@@ -71,9 +72,10 @@ void* thread_fun(void* v)
 	int tmp = 1;
 	if (-1 == setsockopt(client_socket,IPPROTO_TCP,TCP_NODELAY,&tmp,sizeof(tmp)))
 		printf("err=set_tcp_no_delay");
-	int flag = 1;
-	if (-1 == setsockopt(client_socket,SOL_SOCKET,SO_REUSEADDR,&flag,sizeof(tmp)))
-		printf("err=set_reuse");
+	
+	//int flag = 1;
+	//if (-1 == setsockopt(client_socket,SOL_SOCKET,SO_REUSEADDR,&flag,sizeof(tmp)))
+	//		printf("err=set_reuse");
 
 	// set timeout
 //	struct timeval timeout = {1,100000}; 
@@ -101,7 +103,7 @@ void* thread_fun(void* v)
 
 	size_t total=0,writes=1000;
 
-#define SIZE 256
+#define SIZE 64
 	char buffer[SIZE] = "a";
 	bzero(buffer,SIZE);
 
@@ -117,7 +119,7 @@ void* thread_fun(void* v)
 		}
 		if (0 == strncmp(buffer,"quit",strlen("quit"))) { 
 			printf("ok=quit\n");
-			close(client_socket);
+			exit(-1);
 			return NULL;
 		}
 
@@ -137,11 +139,11 @@ void* thread_fun(void* v)
 		if (rcv == 0) {
 			if (OUTPUT)
 				printf("[warn=socket] peer closed\n");
-			close(client_socket);
+			exit(-1);
 			break;
 		} else if (rcv == -1) {
 			printf("[warn=socket] [fd=%d] [errno=%d] [errmsg=%s]\n",client_socket,errno,strerror(errno));
-			close(client_socket);
+			exit(-1);
 			break;
 		} else {
 			if (OUTPUT)
@@ -173,6 +175,16 @@ void* qps_monitor(void* v)
 int main (int argc, char** argv)
 {
 	signal(SIGPIPE,sig_handler);
+
+	if (argc < 3) {
+		fprintf(stderr,"ip address and port number not specified %d\n", argc);
+		return -1;
+	}
+
+	strcpy(IP,argv[1]);
+	PORT = atoi(argv[2]);
+
+	fprintf(stderr, "ip %s:%d\n", IP, PORT);
 
 	srand((unsigned int)time(NULL));
 

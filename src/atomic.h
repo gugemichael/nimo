@@ -1,3 +1,4 @@
+
 #ifndef __NIMO_ATOMIC_H__
 #define __NIMO_ATOMIC_H__
 
@@ -6,7 +7,7 @@ extern "C" {
 #endif
 
 /** 
- * Full memory barrier
+ * full memory barrier
  */
 #define MEMORY_BARRIER() __asm__ __volatile__ ("" ::: "memory")
 
@@ -24,7 +25,7 @@ extern "C" {
  */
 typedef struct { volatile int counter; } atomic_t;
 
-#define ATOMIC_INIT(i)	{ (i) }
+#define atomic_init(i)	{ (i) }
 
 /**
  * atomic_read - read atomic variable
@@ -120,12 +121,12 @@ static __inline__ int atomic_sub_and_test(atomic_t *v, int i)
 }
 
 /**
- * atomic_increment - increment atomic variable
+ * atomic_incr - increment atomic variable
  * @param v pointer of type atomic_t
  * 
  * Atomically increments v by 1.
  */ 
-static __inline__ void atomic_increment(atomic_t *v)
+static __inline__ void atomic_incr(atomic_t *v)
 {
 	__asm__ __volatile__(
 		LOCK "incl %0"
@@ -134,12 +135,12 @@ static __inline__ void atomic_increment(atomic_t *v)
 }
 
 /**
- * atomic_decrement - decrement atomic variable
+ * atomic_decre - decrement atomic variable
  * @param v pointer of type atomic_t
  * 
  * Atomically decrements v by 1.
  */ 
-static __inline__ void atomic_decrement(atomic_t *v)
+static __inline__ void atomic_decr(atomic_t *v)
 {
 	__asm__ __volatile__(
 		LOCK "decl %0"
@@ -148,14 +149,14 @@ static __inline__ void atomic_decrement(atomic_t *v)
 }
 
 /**
- * atomic_dec_and_test - decrement and test
+ * atomic_decr_and_test - decrement and test
  * @param v pointer of type atomic_t
  * 
  * Atomically decrements v by 1 and
  * returns true if the result is 0, or false for all other
  * cases.
  */ 
-static __inline__ int atomic_dec_and_test(atomic_t *v)
+static __inline__ int atomic_decr_and_test(atomic_t *v)
 {
 	unsigned char c;
 
@@ -167,14 +168,14 @@ static __inline__ int atomic_dec_and_test(atomic_t *v)
 }
 
 /**
- * atomic_inc_and_test - increment and test 
+ * atomic_incr_and_test - increment and test 
  * @param v pointer of type atomic_t
  * 
  * Atomically increments v by 1
  * and returns true if the result is zero, or false for all
  * other cases.
  */ 
-static __inline__ int atomic_inc_and_test(atomic_t *v)
+static __inline__ int atomic_incr_and_test(atomic_t *v)
 {
 	unsigned char c;
 
@@ -183,26 +184,6 @@ static __inline__ int atomic_inc_and_test(atomic_t *v)
 		:"=m" (v->counter), "=qm" (c)
 		:"m" (v->counter) : "memory");
 	return c != 0;
-}
-
-/**
- * atomic_add_negative - add and test if negative
- * @param v pointer of type atomic_t
- * @param i integer value to add
- * 
- * Atomically adds i to v and returns true
- * if the result is negative, or false when
- * result is greater than or equal to zero.
- */ 
-static __inline__ int atomic_add_negative(atomic_t *v, int i)
-{
-	unsigned char c;
-
-	__asm__ __volatile__(
-		LOCK "addl %2,%0; sets %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"ir" (i), "m" (v->counter) : "memory");
-	return c;
 }
 
 /* These are x86-specific, used by some header files */
@@ -214,18 +195,18 @@ __asm__ __volatile__(LOCK "andl %0,%1" \
 __asm__ __volatile__(LOCK "orl %0,%1" \
 : : "r" (mask),"m" (*(addr)) : "memory")
 
-#define atomic_inc_return(v)  (atomic_add_return(1,v))
-#define atomic_dec_return(v)  (atomic_sub_return(1,v))
+#define atomic_incr_return(v)  (atomic_add_return(1,v))
+#define atomic_decr_return(v)  (atomic_sub_return(1,v))
 
 
-#define __ub_cas(mem, oldval, newval) \
+#define __cas(mem, oldval, newval) \
 	({ __typeof (*mem) ret;                             \
 	   __asm __volatile ("lock;" "cmpxchgl %2, %1;sete %%al; movzbl %%al,%%eax"                \
 					                            : "=a" (ret), "=m" (*mem)                  \
 					                            : "r" (newval), "m" (*mem), "a" (oldval)\
 					                            :"memory");         \
 	   ret; })
-#define ub_cas __ub_cas
+
 
 #ifdef __cplusplus
 }
